@@ -10,6 +10,13 @@
 extern "C" {
 #endif
 
+void onPressedBackground(lv_event_t * e);
+void tile_event(lv_event_t * e);
+void tile_event(lv_event_t * e);
+void tile_event(lv_event_t * e);
+void tile_event(lv_event_t * e);
+void onGameOver(lv_event_t * e);
+void onExitGame(lv_event_t * e);
 
 #ifdef __cplusplus
 } /*extern "C"*/

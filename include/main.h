@@ -44,3 +44,5 @@ static const uint32_t screenHeight = 480;
 static const uint32_t screenWidth = 480;
 static const uint32_t screenHeight = 320;
 #endif
+
+int score = 0;

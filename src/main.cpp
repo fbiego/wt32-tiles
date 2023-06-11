@@ -300,6 +300,28 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
   }
 }
 
+void tile_event(lv_event_t *e)
+{
+  // Your code here
+  score++;
+  lv_label_set_text_fmt(ui_scoreText, "%d", score);
+  lv_label_set_text_fmt(ui_gameOverScore, "Your score is %d", score);
+}
+void onPressedBackground(lv_event_t *e)
+{
+  lv_label_set_text_fmt(ui_scoreText, "%d", 0);
+}
+void onGameOver(lv_event_t *e)
+{
+  score = 0;
+  lv_label_set_text_fmt(ui_scoreText, "%d", score);
+}
+void onExitGame(lv_event_t *e)
+{
+  score = 0;
+  lv_label_set_text_fmt(ui_scoreText, "%d", score);
+}
+
 void setup()
 {
   Serial.begin(115200);

@@ -16,9 +16,13 @@ void ui_event_playScreen(lv_event_t *e);
 lv_obj_t *ui_playScreen;
 void ui_event_playPanel(lv_event_t *e);
 lv_obj_t *ui_playPanel;
+void ui_event_tile1(lv_event_t *e);
 lv_obj_t *ui_tile1;
+void ui_event_tile2(lv_event_t *e);
 lv_obj_t *ui_tile2;
+void ui_event_tile3(lv_event_t *e);
 lv_obj_t *ui_tile3;
+void ui_event_tile4(lv_event_t *e);
 lv_obj_t *ui_tile4;
 lv_obj_t *ui_scoreText;
 lv_obj_t *ui_playHeader;
@@ -53,6 +57,10 @@ const lv_img_dsc_t *ui_imgset_612449719[1] = {&ui_img_1644947644};
 const lv_img_dsc_t *ui_imgset_1897438134[1] = {&ui_img_1214273956};
 const lv_img_dsc_t *ui_imgset_wallpaper_[1] = {&ui_img_wallpaper_1_png};
 
+bool playing = false;
+int time = 2000;
+int dly = 0;
+
 ///////////////////// TEST LVGL SETTINGS ////////////////////
 #if LV_COLOR_DEPTH != 16
 #error "LV_COLOR_DEPTH should be 16bit to match SquareLine Studio's settings"
@@ -62,6 +70,56 @@ const lv_img_dsc_t *ui_imgset_wallpaper_[1] = {&ui_img_wallpaper_1_png};
 #endif
 
 ///////////////////// ANIMATIONS ////////////////////
+
+static void animation_end_cb(lv_anim_t *anim)
+{
+
+    if (playing)
+    {
+        ui_anim_user_data_t *user_data = (ui_anim_user_data_t *)lv_anim_get_user_data(anim);
+        static int loops;
+        loops++;
+        if (time > 500)
+        {
+            dly += 20;
+            time -= 25;
+            if (loops % 4 == 0)
+            {
+                // time -= 25;
+            }
+        }
+
+        if (lv_obj_has_flag(user_data->target, LV_OBJ_FLAG_HIDDEN))
+        {
+            static int prev = 0;
+            int rx;
+            // randomize lane, and prevent consecutive lanes
+            for (int i = 0; i < 5; i++)
+            {
+                rx = (rand() % 4) * 80;
+                if (rx != prev)
+                {
+                    prev = rx;
+                    break;
+                }
+            }
+
+            // Animation restarted, modify the x position of the object
+            lv_obj_set_x(user_data->target, rx - 120);
+            lv_obj_clear_flag(user_data->target, LV_OBJ_FLAG_HIDDEN);
+            moveDown_Animation(user_data->target, dly);
+        }
+        else
+        {
+            // a tile was missed
+            _ui_flag_modify(ui_gameOverPanel, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
+            playing = false;
+            onPressedBackground(user_data->target);
+            lv_anim_del_all();
+        }
+    }
+}
+
 void moveDown_Animation(lv_obj_t *TargetObject, int delay)
 {
     ui_anim_user_data_t *PropertyAnimation_0_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
@@ -71,7 +129,7 @@ void moveDown_Animation(lv_obj_t *TargetObject, int delay)
     PropertyAnimation_0_user_data->val = -1;
     lv_anim_t PropertyAnimation_0;
     lv_anim_init(&PropertyAnimation_0);
-    lv_anim_set_time(&PropertyAnimation_0, 2000);
+    lv_anim_set_time(&PropertyAnimation_0, time);
     lv_anim_set_user_data(&PropertyAnimation_0, PropertyAnimation_0_user_data);
     lv_anim_set_custom_exec_cb(&PropertyAnimation_0, _ui_anim_callback_set_y);
     lv_anim_set_values(&PropertyAnimation_0, -100, 500);
@@ -80,9 +138,10 @@ void moveDown_Animation(lv_obj_t *TargetObject, int delay)
     lv_anim_set_deleted_cb(&PropertyAnimation_0, _ui_anim_callback_free_user_data);
     lv_anim_set_playback_time(&PropertyAnimation_0, 0);
     lv_anim_set_playback_delay(&PropertyAnimation_0, 0);
-    lv_anim_set_repeat_count(&PropertyAnimation_0, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_repeat_count(&PropertyAnimation_0, 1);
     lv_anim_set_repeat_delay(&PropertyAnimation_0, 0);
     lv_anim_set_early_apply(&PropertyAnimation_0, false);
+    lv_anim_set_ready_cb(&PropertyAnimation_0, animation_end_cb);
     lv_anim_start(&PropertyAnimation_0);
 }
 
@@ -100,8 +159,21 @@ void ui_event_playScreen(lv_event_t *e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t *target = lv_event_get_target(e);
+    if (event_code == LV_EVENT_SCREEN_LOAD_START)
+    {
+
+        lv_obj_set_y(ui_tile1, -240);
+        lv_obj_set_y(ui_tile2, -240);
+        lv_obj_set_y(ui_tile3, -240);
+        lv_obj_set_y(ui_tile4, -240);
+        time = 2000;
+        dly = 0;
+    }
+
     if (event_code == LV_EVENT_SCREEN_LOADED)
     {
+        playing = true;
+
         moveDown_Animation(ui_tile1, 0);
         moveDown_Animation(ui_tile2, 500);
         moveDown_Animation(ui_tile3, 1000);
@@ -115,6 +187,49 @@ void ui_event_playPanel(lv_event_t *e)
     if (event_code == LV_EVENT_CLICKED)
     {
         _ui_flag_modify(ui_gameOverPanel, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_REMOVE);
+        playing = false;
+        onPressedBackground(e);
+        lv_anim_del_all();
+    }
+}
+void ui_event_tile1(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t *target = lv_event_get_target(e);
+    if (event_code == LV_EVENT_CLICKED)
+    {
+        tile_event(e);
+        _ui_flag_modify(ui_tile1, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
+    }
+}
+void ui_event_tile2(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t *target = lv_event_get_target(e);
+    if (event_code == LV_EVENT_CLICKED)
+    {
+        tile_event(e);
+        _ui_flag_modify(ui_tile2, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
+    }
+}
+void ui_event_tile3(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t *target = lv_event_get_target(e);
+    if (event_code == LV_EVENT_CLICKED)
+    {
+        tile_event(e);
+        _ui_flag_modify(ui_tile3, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
+    }
+}
+void ui_event_tile4(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t *target = lv_event_get_target(e);
+    if (event_code == LV_EVENT_CLICKED)
+    {
+        tile_event(e);
+        _ui_flag_modify(ui_tile4, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
     }
 }
 void ui_event_settingsButton(lv_event_t *e)
@@ -133,6 +248,7 @@ void ui_event_restartButton(lv_event_t *e)
     if (event_code == LV_EVENT_CLICKED)
     {
         _ui_flag_modify(ui_gameOverPanel, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
+        onGameOver(e);
     }
 }
 void ui_event_exitButton(lv_event_t *e)
@@ -143,6 +259,7 @@ void ui_event_exitButton(lv_event_t *e)
     {
         _ui_flag_modify(ui_gameOverPanel, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
         _ui_screen_change(ui_startScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0);
+        onExitGame(e);
     }
 }
 void ui_event_closeSettings(lv_event_t *e)
@@ -199,40 +316,44 @@ void ui_playScreen_screen_init(void)
     lv_obj_set_style_border_width(ui_playPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_tile1 = lv_btn_create(ui_playScreen);
-    lv_obj_set_width(ui_tile1, 60);
+    lv_obj_set_width(ui_tile1, 70);
     lv_obj_set_height(ui_tile1, 150);
     lv_obj_set_x(ui_tile1, -120);
     lv_obj_set_y(ui_tile1, -150);
+    lv_obj_set_style_radius(ui_tile1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_align(ui_tile1, LV_ALIGN_TOP_MID);
-    lv_obj_add_flag(ui_tile1, LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
-    lv_obj_clear_flag(ui_tile1, LV_OBJ_FLAG_SCROLLABLE);                            /// Flags
+    lv_obj_add_flag(ui_tile1, LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
+    lv_obj_clear_flag(ui_tile1, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
 
     ui_tile2 = lv_btn_create(ui_playScreen);
-    lv_obj_set_width(ui_tile2, 60);
+    lv_obj_set_width(ui_tile2, 70);
     lv_obj_set_height(ui_tile2, 150);
     lv_obj_set_x(ui_tile2, -40);
     lv_obj_set_y(ui_tile2, -250);
+    lv_obj_set_style_radius(ui_tile2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_align(ui_tile2, LV_ALIGN_TOP_MID);
-    lv_obj_add_flag(ui_tile2, LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
-    lv_obj_clear_flag(ui_tile2, LV_OBJ_FLAG_SCROLLABLE);                            /// Flags
+    lv_obj_add_flag(ui_tile2, LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
+    lv_obj_clear_flag(ui_tile2, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
 
     ui_tile3 = lv_btn_create(ui_playScreen);
-    lv_obj_set_width(ui_tile3, 60);
+    lv_obj_set_width(ui_tile3, 70);
     lv_obj_set_height(ui_tile3, 150);
     lv_obj_set_x(ui_tile3, 40);
     lv_obj_set_y(ui_tile3, -240);
+    lv_obj_set_style_radius(ui_tile3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_align(ui_tile3, LV_ALIGN_TOP_MID);
-    lv_obj_add_flag(ui_tile3, LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
-    lv_obj_clear_flag(ui_tile3, LV_OBJ_FLAG_SCROLLABLE);                            /// Flags
+    lv_obj_add_flag(ui_tile3, LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
+    lv_obj_clear_flag(ui_tile3, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
 
     ui_tile4 = lv_btn_create(ui_playScreen);
-    lv_obj_set_width(ui_tile4, 60);
+    lv_obj_set_width(ui_tile4, 70);
     lv_obj_set_height(ui_tile4, 150);
     lv_obj_set_x(ui_tile4, 120);
     lv_obj_set_y(ui_tile4, -250);
+    lv_obj_set_style_radius(ui_tile4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_align(ui_tile4, LV_ALIGN_TOP_MID);
-    lv_obj_add_flag(ui_tile4, LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
-    lv_obj_clear_flag(ui_tile4, LV_OBJ_FLAG_SCROLLABLE);                            /// Flags
+    lv_obj_add_flag(ui_tile4, LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
+    lv_obj_clear_flag(ui_tile4, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
 
     ui_scoreText = lv_label_create(ui_playScreen);
     lv_obj_set_width(ui_scoreText, LV_SIZE_CONTENT);  /// 1
@@ -240,7 +361,7 @@ void ui_playScreen_screen_init(void)
     lv_obj_set_x(ui_scoreText, 1);
     lv_obj_set_y(ui_scoreText, 78);
     lv_obj_set_align(ui_scoreText, LV_ALIGN_TOP_MID);
-    lv_label_set_text(ui_scoreText, "104");
+    lv_label_set_text(ui_scoreText, "0");
     lv_obj_set_style_text_align(ui_scoreText, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_scoreText, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -259,8 +380,8 @@ void ui_playScreen_screen_init(void)
     lv_obj_set_width(ui_settingsButton, LV_SIZE_CONTENT);  /// 1
     lv_obj_set_height(ui_settingsButton, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(ui_settingsButton, LV_ALIGN_RIGHT_MID);
-    lv_obj_add_flag(ui_settingsButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST); /// Flags
-    lv_obj_clear_flag(ui_settingsButton, LV_OBJ_FLAG_SCROLLABLE);                        /// Flags
+    lv_obj_add_flag(ui_settingsButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST | LV_OBJ_FLAG_HIDDEN); /// Flags
+    lv_obj_clear_flag(ui_settingsButton, LV_OBJ_FLAG_SCROLLABLE);                                             /// Flags
 
     ui_playHeaderText = lv_label_create(ui_playHeader);
     lv_obj_set_width(ui_playHeaderText, LV_SIZE_CONTENT);  /// 1
@@ -307,7 +428,7 @@ void ui_playScreen_screen_init(void)
     lv_obj_set_width(ui_gameOverScore, LV_SIZE_CONTENT);  /// 1
     lv_obj_set_height(ui_gameOverScore, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(ui_gameOverScore, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_gameOverScore, "Your score is 34");
+    lv_label_set_text(ui_gameOverScore, "Your score is 0");
 
     ui_restartButton = lv_btn_create(ui_gameOverDialog);
     lv_obj_set_width(ui_restartButton, 100);
@@ -315,8 +436,8 @@ void ui_playScreen_screen_init(void)
     lv_obj_set_x(ui_restartButton, 1);
     lv_obj_set_y(ui_restartButton, 0);
     lv_obj_set_align(ui_restartButton, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_restartButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS); /// Flags
-    lv_obj_clear_flag(ui_restartButton, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_add_flag(ui_restartButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS | LV_OBJ_FLAG_HIDDEN); /// Flags
+    lv_obj_clear_flag(ui_restartButton, LV_OBJ_FLAG_SCROLLABLE);                         /// Flags
 
     ui_restartButtonText = lv_label_create(ui_restartButton);
     lv_obj_set_width(ui_restartButtonText, LV_SIZE_CONTENT);  /// 1
@@ -340,6 +461,10 @@ void ui_playScreen_screen_init(void)
     lv_label_set_text(ui_exitButtonText, "Exit");
 
     lv_obj_add_event_cb(ui_playPanel, ui_event_playPanel, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_tile1, ui_event_tile1, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_tile2, ui_event_tile2, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_tile3, ui_event_tile3, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_tile4, ui_event_tile4, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_settingsButton, ui_event_settingsButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_restartButton, ui_event_restartButton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_exitButton, ui_event_exitButton, LV_EVENT_ALL, NULL);
